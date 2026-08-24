@@ -1,8 +1,0 @@
-__pycache__/
-*.py[oc]
-.venv/
-.uv-cache/
-build/
-dist/
-*.egg-info/
-config.json

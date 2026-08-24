@@ -11,6 +11,8 @@ ManyYasuo 是 Windows 下的批量文件处理工作台，统一整合四个模�
 - uv
 - 7-Zip（命令行版 `7z.exe`）
 
+仅支持 Windows。运行和构建前先执行 `uv sync`，不要提交本地虚拟环境、缓存、应用配置或构建产物。
+
 ## 常用命令
 - 安装依赖：`uv sync`
 - 运行程序：`uv run python app.py`
@@ -29,7 +31,7 @@ ManyYasuo 是 Windows 下的批量文件处理工作台，统一整合四个模�
 - `批量解压/`：解压模块。
 - `重命名/`：重命名模块。
 - `tests/`：单元测试、GUI 冒烟测试和性能冒烟测试。
-- `dist/`：PyInstaller 构建产物。
+- `main_fast.spec`：PyInstaller 构建配置；产物生成到已忽略的 `dist/`。
 
 ## 架构约定
 - 统一入口是 `app.py`。
@@ -37,6 +39,7 @@ ManyYasuo 是 Windows 下的批量文件处理工作台，统一整合四个模�
 - 同一时间只允许一个文件任务运行。
 - 耗时工作放后台线程，通过 `queue.Queue` + Tk `after` 回传 UI 事件。
 - 新增业务规则优先放入 `core.py`，并配套单元测试。
+- 本地设置写入已忽略的 `config.json`，不得提交包含密码或本机路径的配置。
 
 ## UI 与文案约定
 - 界面文案使用中文。
