@@ -1,0 +1,11 @@
+[project]
+name = "manyyasuo"
+version = "0.1.0"
+description = "Unified Windows workstation for folder preprocessing, compression, extraction and renaming"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "customtkinter>=5.2.2",
+    "pyinstaller>=6.20.0",
+    "tkinterdnd2>=0.5.0",
+]

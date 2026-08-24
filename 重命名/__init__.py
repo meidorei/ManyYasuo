@@ -1,0 +1,1 @@
+"""Integrated folder-renaming page."""
