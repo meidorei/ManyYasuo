@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 from tkinter import messagebox
 
 import customtkinter as ctk
@@ -40,6 +41,9 @@ from ui_theme import (
 class UnifiedWindow(ctk.CTk, DnDWrapper):
     def __init__(self):
         super().__init__()
+        icon_path = str(Path(__file__).resolve().parent / "assets" / "app-icon.ico")
+        self.iconbitmap(default=icon_path)
+        self.iconbitmap(bitmap=icon_path)
         self.TkdndVersion = _require(self)
 
 
@@ -416,6 +420,10 @@ class WorkstationApp:
 
 
 def run():
+    if sys.platform == "win32":
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ManyYasuo.Workstation")
     if getattr(sys, "frozen", False):
         os.environ["TKDND_LIBRARY"] = os.path.join(sys._MEIPASS, "tkinterdnd2", "tkdnd")
     ctk.set_appearance_mode("light")

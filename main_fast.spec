@@ -4,6 +4,7 @@ from PyInstaller.utils.hooks import collect_data_files
 
 datas = collect_data_files("tkinterdnd2")
 datas += collect_data_files("customtkinter")
+datas += [("assets/app-icon.ico", "assets")]
 
 a = Analysis(
     ["app.py"],
@@ -26,6 +27,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name="ManyYasuo",
+    icon="assets/app-icon.ico",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
