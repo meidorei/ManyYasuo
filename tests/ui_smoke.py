@@ -28,7 +28,7 @@ def main():
         window = app.UnifiedWindow()
         window.withdraw()
         workstation = app.WorkstationApp(window)
-        assert window.title() == "压缩"
+        assert window.title() == "批量压缩 · 文件工作台"
         assert set(workstation.pages) == {"compression", "preprocessing", "extraction", "renaming"}
         assert workstation.nav_buttons["preprocessing"].cget("text") == "加入标签"
         assert workstation.nav_buttons["renaming"].cget("text") == "提取标签"
@@ -185,6 +185,28 @@ def main():
         compression.add_paths([str(Path(temporary) / "sort-3")])
         assert [row["original_name"] for row in compression.left_rows] == ["sort-1", "sort-2", "sort-3", "sort-10"]
         compression.clear_left_list()
+
+        alignment_paths = []
+        for name in ("短名", "HGLIST-402-被侵犯的公主", "HGLIST-123456789-" + "很长的文件夹名称" * 8):
+            path = Path(temporary) / name
+            path.mkdir()
+            alignment_paths.append(str(path))
+        workstation.show_page("compression")
+        compression.add_paths(alignment_paths)
+        assert wait_for(window, lambda: not compression.tag_scan_tokens)
+        compression.revalidate_left_list()
+        for row in compression.left_rows:
+            if row["original_name"] != row["expected_target_name"]:
+                assert row["btn_fix"].cget("text") == f"改为 {row['expected_target_name']}"
+        window.deiconify()
+        for size in ("1080x680", "1360x820"):
+            window.geometry(size)
+            window.update()
+            for key in ("lbl_name", "entry", "btn_fix", "btn_remove"):
+                bounds = {(row[key].winfo_rootx(), row[key].winfo_width()) for row in compression.left_rows}
+                assert len(bounds) == 1, (size, key, bounds)
+        compression.clear_left_list()
+        window.withdraw()
 
         archive_names = ("archive-10.7z", "archive-2.7z", "archive-1.7z")
         for name in archive_names + ("archive-3.7z",):

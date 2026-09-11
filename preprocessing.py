@@ -33,6 +33,8 @@ from job_coordinator import JobCoordinator
 
 
 from ui_theme import (
+    SoftCard, SoftButton, SoftEntry, SoftProgressBar, SoftScrollableFrame,
+    SCROLLBAR, SCROLLBAR_HOVER,
     BG,
     BORDER,
     DANGER,
@@ -93,7 +95,7 @@ class PreprocessApp:
 
     @staticmethod
     def _card(parent, **kwargs):
-        return ctk.CTkFrame(
+        return SoftCard(
             parent,
             fg_color=SURFACE,
             border_width=1,
@@ -126,7 +128,7 @@ class PreprocessApp:
         ctk.CTkLabel(controls, text="起始编号", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=(14, 7), pady=11)
         self.counter_var = ctk.StringVar(value="0001")
         self.counter_var.trace_add("write", self.revalidate)
-        self.entry_counter = ctk.CTkEntry(
+        self.entry_counter = SoftEntry(
             controls,
             textvariable=self.counter_var,
             width=88,
@@ -140,13 +142,13 @@ class PreprocessApp:
         self.btn_detect_number.pack(side="left", padx=8, pady=9)
 
         ctk.CTkLabel(controls, text="文件名前缀", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=(12, 7))
-        self.entry_prefix = ctk.CTkEntry(controls, width=140, height=36, fg_color=SURFACE_3, border_color=BORDER)
+        self.entry_prefix = SoftEntry(controls, width=140, height=36, fg_color=SURFACE_3, border_color=BORDER)
         self.entry_prefix.pack(side="left")
         self.entry_prefix.insert(0, self.config.get("prefix", "HGLIST-"))
         self.entry_prefix.bind("<KeyRelease>", self.revalidate)
 
         ctk.CTkLabel(controls, text="标签前缀", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=(12, 7))
-        self.entry_tag_prefix = ctk.CTkEntry(controls, width=120, height=36, fg_color=SURFACE_3, border_color=BORDER)
+        self.entry_tag_prefix = SoftEntry(controls, width=120, height=36, fg_color=SURFACE_3, border_color=BORDER)
         self.entry_tag_prefix.pack(side="left")
         self.entry_tag_prefix.insert(0, self.config.get("tag_prefix", "AAA_"))
         self.entry_tag_prefix.bind("<KeyRelease>", self.schedule_tag_rescan)
@@ -171,12 +173,12 @@ class PreprocessApp:
         for column, text, width in ((0, "当前名称", 0), (1, "目标名称", 0), (2, "编号", 112), (3, "大小（点击复制）", 104), (4, "标签", 150), (5, "状态", 106)):
             ctk.CTkLabel(columns, text=text, width=width, anchor="w", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=column, sticky="ew", padx=6)
 
-        self.list_frame = ctk.CTkScrollableFrame(
+        self.list_frame = SoftScrollableFrame(
             listing,
             fg_color=SURFACE_ALT,
             corner_radius=10,
-            scrollbar_button_color="#CBD5E1",
-            scrollbar_button_hover_color="#94A3B8",
+            scrollbar_button_color=SCROLLBAR,
+            scrollbar_button_hover_color=SCROLLBAR_HOVER,
         )
         self.list_frame.grid(row=2, column=0, sticky="nsew", padx=18, pady=(0, 18))
         self.list_frame.grid_columnconfigure(0, weight=1)
@@ -195,11 +197,11 @@ class PreprocessApp:
         ctk.CTkLabel(status_row, textvariable=self.status_var, text_color=TEXT, font=ctk.CTkFont(size=12, weight="bold")).pack(side="left")
         self.total_label = ctk.CTkLabel(status_row, text="0%", text_color=PRIMARY, font=ctk.CTkFont(size=12, weight="bold"))
         self.total_label.pack(side="right")
-        self.total_progress = ctk.CTkProgressBar(progress_box, height=7, corner_radius=4, fg_color=SURFACE_3, progress_color=PRIMARY)
+        self.total_progress = SoftProgressBar(progress_box, height=26, corner_radius=13, fg_color=SURFACE, progress_color=PRIMARY)
         self.total_progress.grid(row=1, column=0, sticky="ew")
         self.total_progress.set(0)
 
-        self.btn_cancel = ctk.CTkButton(
+        self.btn_cancel = SoftButton(
             dock,
             text="取消",
             command=self.cancel,
@@ -207,22 +209,22 @@ class PreprocessApp:
             width=112,
             height=46,
             corner_radius=11,
-            fg_color="#FEE2E2",
-            hover_color="#FECACA",
+            fg_color=SURFACE,
+            hover_color=SECONDARY_HOVER,
             text_color=DANGER,
             font=ctk.CTkFont(size=14, weight="bold"),
         )
         self.btn_cancel.grid(row=0, column=1, padx=(8, 10), pady=14)
-        self.btn_start = ctk.CTkButton(
+        self.btn_start = SoftButton(
             dock,
             text="加入标签",
             command=self.start,
             width=168,
             height=46,
             corner_radius=11,
-            fg_color=PRIMARY,
-            hover_color=PRIMARY_HOVER,
-            text_color="white",
+            fg_color=SURFACE,
+            hover_color=SECONDARY_HOVER,
+            text_color=PRIMARY,
             font=ctk.CTkFont(size=14, weight="bold"),
         )
         self.btn_start.grid(row=0, column=2, padx=(0, 18), pady=14)
@@ -375,7 +377,7 @@ class PreprocessApp:
         current.grid(row=0, column=0, sticky="ew", padx=(12, 6), pady=10)
         target = ctk.CTkLabel(frame, text=row["target_name"], anchor="w", text_color=row["target_color"], font=ctk.CTkFont(size=13, weight="bold"))
         target.grid(row=0, column=1, sticky="ew", padx=6)
-        number = ctk.CTkButton(
+        number = SoftButton(
             frame,
             text="检查编号",
             width=112,
@@ -389,7 +391,7 @@ class PreprocessApp:
         apply_focus_style(number)
         number.grid(row=0, column=2, padx=6, pady=8)
         size_ready = row["size_bytes"] is not None
-        size = ctk.CTkButton(
+        size = SoftButton(
             frame,
             text=row["size_text"],
             width=104,
@@ -405,12 +407,12 @@ class PreprocessApp:
         ToolTip(size, "点击复制")
         apply_focus_style(size)
         size.grid(row=0, column=3, padx=6, pady=8)
-        tag = ctk.CTkEntry(frame, textvariable=row["tag_var"], width=150, height=36, placeholder_text="可选", fg_color=SURFACE, border_color=BORDER)
+        tag = SoftEntry(frame, textvariable=row["tag_var"], width=150, height=36, placeholder_text="可选", fg_color=SURFACE, border_color=BORDER)
         tag.grid(row=0, column=4, padx=6, pady=8)
         tag.bind("<KeyRelease>", lambda _event, item=row["id"]: self._mark_tag_edited(item))
         status = ctk.CTkLabel(frame, text=row["status_text"], width=106, anchor="w", text_color=row["status_color"], font=ctk.CTkFont(size=12, weight="bold"))
         status.grid(row=0, column=5, padx=6, pady=8)
-        remove = ctk.CTkButton(
+        remove = SoftButton(
             frame,
             text="×",
             width=44,

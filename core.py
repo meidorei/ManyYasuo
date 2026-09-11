@@ -26,6 +26,14 @@ CANCELLED = "cancelled"
 IGNORED_WRAPPER_ENTRIES = {"desktop.ini", ".DS_Store", "Thumbs.db"}
 
 
+def _is_reparse_point(path: Path) -> bool:
+    info = path.lstat()
+    return stat.S_ISLNK(info.st_mode) or bool(
+        getattr(info, "st_file_attributes", 0)
+        & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    )
+
+
 def _sanitize_marker_text(value: str) -> str:
     return re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", value).strip()
 
@@ -173,7 +181,7 @@ def find_tag_marker(root: Path | str, prefix: str) -> Path | None:
     """
     root = Path(root)
     normalized_prefix = _sanitize_marker_text(prefix)
-    if not normalized_prefix or not root.is_dir():
+    if not normalized_prefix or not root.is_dir() or _is_reparse_point(root):
         return None
 
     parents = [root]
@@ -185,7 +193,7 @@ def find_tag_marker(root: Path | str, prefix: str) -> Path | None:
                 with os.scandir(parent) as entries:
                     for entry in entries:
                         try:
-                            if not entry.is_dir(follow_symlinks=False):
+                            if not entry.is_dir(follow_symlinks=False) or _is_reparse_point(Path(entry.path)):
                                 continue
                         except OSError:
                             continue
@@ -410,6 +418,9 @@ def analyze_explicit_preprocess_batch(
         elif not source.is_dir():
             message = f"不是文件夹：{source.name}"
             status = INVALID
+        elif _is_reparse_point(source):
+            message = f"不能修改链接或重解析目录：{source}"
+            status = INVALID
         elif target.exists() and _path_key(target) not in source_key_set:
             message = f"目标已存在：{target.name}"
             status = INVALID
@@ -473,6 +484,8 @@ def format_size(size: int) -> str:
 def unwrap_single_child_chain(root: str | os.PathLike[str], tag_prefix: str = "") -> int:
     """Lift a single-child directory chain into root, returning levels removed."""
     root = Path(root)
+    if _is_reparse_point(root):
+        raise OSError(f"不能修改链接或重解析目录：{root}")
     removed = 0
     while True:
         entries = list(root.iterdir())
@@ -483,7 +496,7 @@ def unwrap_single_child_chain(root: str | os.PathLike[str], tag_prefix: str = ""
         normalized_tag_prefix = _sanitize_marker_text(tag_prefix)
         if normalized_tag_prefix and nested.name.startswith(normalized_tag_prefix):
             return removed
-        if not nested.is_dir() or nested.is_symlink():
+        if not nested.is_dir() or _is_reparse_point(nested):
             return removed
         nested_entries = list(nested.iterdir())
         collisions = [entry.name for entry in nested_entries if (root / entry.name).exists()]
@@ -568,22 +581,34 @@ def _execute_preprocess_plan(
             os.rename(stage, item.target)
             finalized.append((item, item.target))
     except OSError as error:
-        finalized_sources = {id(item) for item, _ in finalized}
+        stages = {id(item): stage for item, stage in staged}
+        locations = {id(item): stage for item, stage in staged}
+        locations.update({id(item): current for item, current in finalized})
+        recovery_errors: list[str] = []
         for item, current in reversed(finalized):
             try:
-                os.rename(current, item.source)
-            except OSError:
-                pass
+                os.rename(current, stages[id(item)])
+                locations[id(item)] = stages[id(item)]
+            except OSError as recovery_error:
+                recovery_errors.append(str(recovery_error))
         for item, stage in reversed(staged):
-            if id(item) in finalized_sources:
+            if locations[id(item)] != stage:
                 continue
-            if stage.exists():
-                try:
-                    os.rename(stage, item.source)
-                except OSError:
-                    pass
+            try:
+                if os.path.lexists(item.source):
+                    raise FileExistsError(f"恢复路径已占用：{item.source}")
+                os.rename(stage, item.source)
+                locations[id(item)] = item.source
+            except OSError as recovery_error:
+                recovery_errors.append(str(recovery_error))
+        details = ""
+        if recovery_errors:
+            kept = [f"原路径：{item.source}；实际保留位置：{locations[id(item)]}"
+                    for item, _ in staged if locations[id(item)] != item.source]
+            details = "；回滚异常：" + "；".join(recovery_errors + kept)
         return tuple(
-            PreprocessResult(item.source, item.target, FAILED, f"批量重命名失败：{error}")
+            PreprocessResult(item.source, locations.get(id(item), item.source), FAILED,
+                             f"批量重命名失败：{error}{details}")
             for item in batch.previews
         )
 
@@ -670,6 +695,8 @@ def analyze_folder(
         return RenamePreview(folder, INVALID, "拖入的项目不是文件夹")
 
     try:
+        if _is_reparse_point(folder):
+            return RenamePreview(folder, INVALID, f"不能修改链接或重解析目录：{folder}")
         terms = parse_block_terms(options.block_terms)
         blocker = find_blocking_file(folder, terms) if terms else None
         if blocker is not None:

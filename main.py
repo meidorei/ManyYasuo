@@ -19,7 +19,9 @@ from tkinterdnd2 import DND_FILES
 from tkinterdnd2.TkinterDnD import DnDWrapper, _require
 
 from core import (
+    FAILED,
     PREPROCESSED,
+    PreprocessResult,
     analyze_explicit_preprocess_batch,
     detect_compression_tag,
     execute_explicit_preprocess_batch,
@@ -32,6 +34,8 @@ APP_NAME = "批量压缩工作台"
 CONFIG_FILE = Path(sys.executable if getattr(sys, "frozen", False) else __file__).with_name("config.json")
 
 from ui_theme import (
+    SoftCard, SoftButton, SoftEntry, SoftProgressBar, SoftScrollableFrame,
+    SCROLLBAR, SCROLLBAR_HOVER,
     APP_FONT,
     BG,
     BORDER,
@@ -146,7 +150,7 @@ class PipelineApp:
 
     @staticmethod
     def card(parent, **kwargs):
-        return ctk.CTkFrame(
+        return SoftCard(
             parent,
             fg_color=SURFACE,
             border_color=BORDER,
@@ -189,16 +193,16 @@ class PipelineApp:
         center.grid_propagate(False)
         center.grid_rowconfigure(0, weight=1)
         center.grid_rowconfigure(2, weight=1)
-        self.btn_enqueue = ctk.CTkButton(
+        self.btn_enqueue = SoftButton(
             center,
             text="加入队列",
             command=self.do_restructure,
             width=126,
             height=46,
             corner_radius=12,
-            fg_color=PRIMARY,
-            hover_color=PRIMARY_HOVER,
-            text_color="white",
+            fg_color=SURFACE,
+            hover_color=SECONDARY_HOVER,
+            text_color=PRIMARY,
             font=ctk.CTkFont(size=14, weight="bold"),
         )
         self.btn_enqueue.grid(row=1, column=0)
@@ -214,7 +218,7 @@ class PipelineApp:
             width=30,
             height=30,
             corner_radius=10,
-            fg_color="#EAF2FF",
+            fg_color=SURFACE_3,
             text_color=PRIMARY,
             font=ctk.CTkFont(size=13, weight="bold"),
         ).pack(side="left")
@@ -228,28 +232,30 @@ class PipelineApp:
     def build_left_panel(self, parent):
         panel = self.card(parent)
         head = self.panel_header(panel, "01", "导入文件夹", "")
-        self.secondary_button(head, "清空", self.clear_left_list, 66).pack(side="right")
-        self.secondary_button(head, "选择文件夹", self.choose_folders, 104).pack(side="right", padx=(0, 8))
+        toolbar = ctk.CTkFrame(panel, fg_color="transparent")
+        toolbar.pack(fill="x", padx=18, pady=(0, 8))
+        self.secondary_button(toolbar, "选择文件夹", self.choose_folders, 112).pack(side="left")
+        self.secondary_button(toolbar, "清空", self.clear_left_list, 66).pack(side="right")
 
-        number_card = ctk.CTkFrame(panel, fg_color="#F4F7FB", corner_radius=10)
+        number_card = ctk.CTkFrame(panel, fg_color=SURFACE_2, corner_radius=10)
         number_card.pack(fill="x", padx=18, pady=(0, 10))
         ctk.CTkLabel(number_card, text="起始编号", text_color=MUTED, font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=(14, 8), pady=10)
         self.counter_var = ctk.StringVar(value="0001")
         self.counter_var.trace_add("write", self.revalidate_left_list)
-        ctk.CTkEntry(number_card, textvariable=self.counter_var, width=90, height=34, corner_radius=8, fg_color=SURFACE_3, border_color=BORDER, justify="center").pack(side="left", pady=8)
+        SoftEntry(number_card, textvariable=self.counter_var, width=90, height=34, corner_radius=8, fg_color=SURFACE_3, border_color=BORDER, justify="center").pack(side="left", pady=8)
         self.secondary_button(number_card, "提取最小编号", self.detect_min_number, 112).pack(side="left", padx=8, pady=8)
 
-        self.frame_left = ctk.CTkScrollableFrame(
+        self.frame_left = SoftScrollableFrame(
             panel,
-            fg_color="#F4F7FB",
+            fg_color=SURFACE_2,
             corner_radius=10,
-            scrollbar_button_color="#CBD5E1",
-            scrollbar_button_hover_color="#94A3B8",
+            scrollbar_button_color=SCROLLBAR,
+            scrollbar_button_hover_color=SCROLLBAR_HOVER,
         )
         self.frame_left.pack(fill="both", expand=True, padx=18, pady=(0, 18))
         self.left_empty = ctk.CTkLabel(
             self.frame_left,
-            text="拖入文件夹，或点击“选择文件夹”",
+            text="拖入文件夹\n或点击上方“选择文件夹”",
             text_color=MUTED,
             font=ctk.CTkFont(size=14, weight="bold"),
         )
@@ -263,15 +269,15 @@ class PipelineApp:
         self.queue_count_var = ctk.StringVar(value="队列为空")
         ctk.CTkLabel(panel, textvariable=self.queue_count_var, text_color=MUTED, font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", padx=20, pady=(0, 10))
 
-        self.frame_right = ctk.CTkScrollableFrame(
+        self.frame_right = SoftScrollableFrame(
             panel,
-            fg_color="#F4F7FB",
+            fg_color=SURFACE_2,
             corner_radius=10,
-            scrollbar_button_color="#CBD5E1",
-            scrollbar_button_hover_color="#94A3B8",
+            scrollbar_button_color=SCROLLBAR,
+            scrollbar_button_hover_color=SCROLLBAR_HOVER,
         )
         self.frame_right.pack(fill="both", expand=True, padx=18, pady=(0, 18))
-        self.right_empty = ctk.CTkLabel(self.frame_right, text="暂无任务", text_color=MUTED, font=ctk.CTkFont(size=14, weight="bold"))
+        self.right_empty = ctk.CTkLabel(self.frame_right, text="队列为空\n导入文件夹后，点击“加入队列”", text_color=MUTED, font=ctk.CTkFont(size=14))
         self.right_empty.pack(expand=True, pady=80)
         return panel
 
@@ -285,7 +291,7 @@ class PipelineApp:
         header = ctk.CTkFrame(self.settings_card, fg_color="transparent", cursor="hand2")
         header.pack(fill="x", padx=18, pady=13)
         header.bind("<Button-1>", lambda _event: self.toggle_settings())
-        icon = ctk.CTkLabel(header, text="配置", width=42, height=30, corner_radius=8, fg_color="#EAF2FF", text_color=PRIMARY, font=ctk.CTkFont(size=11, weight="bold"))
+        icon = ctk.CTkLabel(header, text="配置", width=42, height=30, corner_radius=8, fg_color=SURFACE_3, text_color=PRIMARY, font=ctk.CTkFont(size=11, weight="bold"))
         icon.pack(side="left")
         icon.bind("<Button-1>", lambda _event: self.toggle_settings())
         label_box = ctk.CTkFrame(header, fg_color="transparent")
@@ -293,7 +299,7 @@ class PipelineApp:
         ctk.CTkLabel(label_box, text="压缩配置", text_color=TEXT, font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w")
         self.settings_summary = ctk.CTkLabel(label_box, text="路径、命名、加密与性能", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold"))
         self.settings_summary.pack(anchor="w")
-        self.settings_toggle = ctk.CTkButton(
+        self.settings_toggle = SoftButton(
             header,
             text="展开",
             command=self.toggle_settings,
@@ -301,8 +307,8 @@ class PipelineApp:
             height=32,
             corner_radius=9,
             fg_color=SURFACE_3,
-            hover_color="#E3EAF2",
-            text_color="#334155",
+            hover_color=SECONDARY_HOVER,
+            text_color=TEXT,
         )
         self.settings_toggle.pack(side="right")
 
@@ -315,11 +321,11 @@ class PipelineApp:
         for column in range(4):
             parent.grid_columnconfigure(column, weight=1)
 
-        project = ctk.CTkFrame(parent, fg_color="#F4F7FB", corner_radius=10)
+        project = ctk.CTkFrame(parent, fg_color=SURFACE_2, corner_radius=10)
         project.grid(row=0, column=0, columnspan=4, sticky="ew", pady=(0, 14))
         project.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(project, text="7-Zip 路径", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=0, padx=(14, 8), pady=12)
-        self.entry_7z = ctk.CTkEntry(
+        self.entry_7z = SoftEntry(
             project,
             height=38,
             corner_radius=9,
@@ -333,19 +339,19 @@ class PipelineApp:
         self.secondary_button(project, "浏览", self.choose_7z, 72).grid(row=0, column=2, padx=8)
 
         ctk.CTkLabel(project, text="前缀", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=3, padx=(10, 6))
-        self.entry_prefix = ctk.CTkEntry(project, width=130, height=38, corner_radius=9, fg_color=SURFACE_2, border_color=BORDER, text_color=TEXT)
+        self.entry_prefix = SoftEntry(project, width=130, height=38, corner_radius=9, fg_color=SURFACE_2, border_color=BORDER, text_color=TEXT)
         self.entry_prefix.grid(row=0, column=4)
         self.entry_prefix.insert(0, self.config.get("prefix", "HGLIST-"))
         self.entry_prefix.bind("<KeyRelease>", self.revalidate_left_list)
 
         ctk.CTkLabel(project, text="后缀", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=5, padx=(10, 6))
-        self.entry_ext = ctk.CTkEntry(project, width=76, height=38, corner_radius=9, fg_color=SURFACE_2, border_color=BORDER, text_color=TEXT)
+        self.entry_ext = SoftEntry(project, width=76, height=38, corner_radius=9, fg_color=SURFACE_2, border_color=BORDER, text_color=TEXT)
         self.entry_ext.grid(row=0, column=6)
         self.entry_ext.insert(0, self.config.get("extension", ".1"))
         self.secondary_button(project, "保存设置", self.save_config, 92).grid(row=0, column=7, padx=(10, 14))
 
         ctk.CTkLabel(project, text="标签前缀", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).grid(row=1, column=0, padx=(14, 8), pady=(0, 12))
-        self.entry_tag_prefix = ctk.CTkEntry(
+        self.entry_tag_prefix = SoftEntry(
             project,
             width=130,
             height=38,
@@ -374,11 +380,11 @@ class PipelineApp:
 
         password = self.setting_group(parent, "压缩密码", 0, 0)
         password.grid_columnconfigure(0, weight=1)
-        self.entry_pwd = ctk.CTkEntry(password, height=38, corner_radius=9, fg_color=SURFACE_2, border_color=BORDER, show="●")
+        self.entry_pwd = SoftEntry(password, height=38, corner_radius=9, fg_color=SURFACE_2, border_color=BORDER, show="●")
         self.entry_pwd.grid(row=1, column=0, sticky="ew")
         self.entry_pwd.insert(0, self.config.get("pwd", ""))
         self.show_pwd = False
-        self.btn_toggle_pwd = ctk.CTkButton(password, text="显示", command=self.toggle_pwd_visibility, width=58, height=38, corner_radius=9, fg_color=SURFACE_3, hover_color="#E3EAF2", text_color=MUTED)
+        self.btn_toggle_pwd = SoftButton(password, text="显示", command=self.toggle_pwd_visibility, width=58, height=38, corner_radius=9, fg_color=SURFACE_3, hover_color=SECONDARY_HOVER, text_color=MUTED)
         self.btn_toggle_pwd.grid(row=1, column=1, padx=(6, 0))
 
         encryption = self.setting_group(parent, "文件名", 0, 1)
@@ -392,7 +398,7 @@ class PipelineApp:
             corner_radius=6,
             fg_color=PRIMARY,
             hover_color=PRIMARY_HOVER,
-            border_color="#94A3B8",
+            border_color=SCROLLBAR_HOVER,
             command=self.update_settings_summary,
         ).grid(row=1, column=0, sticky="w")
 
@@ -428,9 +434,9 @@ class PipelineApp:
             fg_color=SURFACE_2,
             border_color=BORDER,
             button_color=SURFACE_3,
-            button_hover_color="#CBD5E1",
+            button_hover_color=SURFACE,
             dropdown_fg_color=SURFACE_2,
-            dropdown_hover_color="#EAF2FF",
+            dropdown_hover_color=SURFACE_3,
             text_color=TEXT,
             command=lambda _value: self.update_settings_summary(),
         )
@@ -460,13 +466,12 @@ class PipelineApp:
         self.settings_summary.configure(text=f"{level}压缩 · {suffix} 后缀 · {self.combo_dict.get()} 字典 · {self.combo_threads.get()}线程{encrypted}")
 
     def build_action_dock(self):
-        dock = ctk.CTkFrame(self.root, height=78, corner_radius=0, fg_color=SURFACE, border_width=1, border_color=BORDER)
-        dock.grid(row=2, column=0, sticky="ew")
-        dock.grid_propagate(False)
+        dock = SoftCard(self.root, fg_color=SURFACE)
+        dock.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 16))
         dock.grid_columnconfigure(0, weight=1)
 
         progress = ctk.CTkFrame(dock, fg_color="transparent")
-        progress.grid(row=0, column=0, sticky="ew", padx=(24, 22), pady=14)
+        progress.grid(row=0, column=0, sticky="ew", padx=(24, 16), pady=18)
         progress.grid_columnconfigure(0, weight=1)
         progress_title = ctk.CTkFrame(progress, fg_color="transparent")
         progress_title.grid(row=0, column=0, sticky="w")
@@ -474,17 +479,17 @@ class PipelineApp:
         ctk.CTkLabel(progress_title, textvariable=self.status_var, text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=(10, 0))
         self.total_label = ctk.CTkLabel(progress, text="0%", text_color=PRIMARY, font=ctk.CTkFont(size=13, weight="bold"))
         self.total_label.grid(row=0, column=1, sticky="e")
-        self.total_progress = ctk.CTkProgressBar(progress, height=8, corner_radius=4, fg_color=SURFACE_3, progress_color=PRIMARY)
-        self.total_progress.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(7, 0))
+        self.total_progress = SoftProgressBar(progress, height=26, corner_radius=13, fg_color=SURFACE, progress_color=PRIMARY)
+        self.total_progress.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         self.total_progress.set(0)
 
-        self.btn_pause = ctk.CTkButton(dock, text="暂停全部", command=self.toggle_pause, state="disabled", width=108, height=44, corner_radius=11, fg_color=SURFACE_3, hover_color="#E3EAF2", text_color=MUTED)
+        self.btn_pause = SoftButton(dock, text="暂停全部", command=self.toggle_pause, state="disabled", width=108, height=44, corner_radius=11, fg_color=SURFACE, hover_color=SECONDARY_HOVER, text_color=MUTED, text_color_disabled=MUTED)
         apply_focus_style(self.btn_pause)
         self.btn_pause.grid(row=0, column=1, padx=(0, 8))
-        self.btn_cancel = ctk.CTkButton(dock, text="取消任务", command=self.cancel_all, state="disabled", width=108, height=44, corner_radius=11, fg_color=DANGER_BG, hover_color=DANGER_HOVER, text_color=DANGER)
+        self.btn_cancel = SoftButton(dock, text="取消任务", command=self.cancel_all, state="disabled", width=108, height=44, corner_radius=11, fg_color=SURFACE, hover_color=DANGER_HOVER, text_color=DANGER, text_color_disabled=MUTED)
         apply_focus_style(self.btn_cancel)
         self.btn_cancel.grid(row=0, column=2, padx=(0, 10))
-        self.btn_compress = ctk.CTkButton(dock, text="开始压缩", command=self.do_compress, width=178, height=48, corner_radius=12, fg_color=PRIMARY, hover_color=PRIMARY_HOVER, text_color="white", font=ctk.CTkFont(size=15, weight="bold"))
+        self.btn_compress = SoftButton(dock, text="开始压缩", command=self.do_compress, width=178, height=48, corner_radius=12, fg_color=SURFACE, hover_color=SECONDARY_HOVER, text_color=PRIMARY, font=ctk.CTkFont(size=15, weight="bold"))
         apply_focus_style(self.btn_compress)
         self.btn_compress.grid(row=0, column=3, padx=(0, 24))
 
@@ -529,21 +534,32 @@ class PipelineApp:
             self.left_empty.pack_forget()
         row_frame = ctk.CTkFrame(self.frame_left, fg_color=SURFACE_2, corner_radius=10)
         row_frame.pack(fill="x", pady=(0, 8))
-        row_frame.grid_columnconfigure(0, weight=1)
-        name_label = ctk.CTkLabel(row_frame, text=name, text_color=TEXT, anchor="w", width=240, font=ctk.CTkFont(size=14, weight="bold"))
-        name_label.grid(row=0, column=0, sticky="ew", padx=(13, 8), pady=10)
-        tag_entry = ctk.CTkEntry(row_frame, width=150, height=36, corner_radius=8, fg_color=SURFACE_3, border_color=BORDER, placeholder_text="识别中…")
-        tag_entry.grid(row=0, column=1, padx=6, pady=10)
+        # Independent rows share the same proportions; text must not determine
+        # their requested column widths or push adjacent controls sideways.
+        for column in (0, 1):
+            row_frame.grid_columnconfigure(column, weight=1, uniform="fields")
+        name_cell = ctk.CTkFrame(row_frame, width=1, height=44, fg_color="transparent")
+        name_cell.grid(row=0, column=0, sticky="ew", padx=(13, 8), pady=10)
+        name_cell.pack_propagate(False)
+        name_label = ctk.CTkLabel(name_cell, text=name, text_color=TEXT, anchor="w", width=1, font=ctk.CTkFont(size=14, weight="bold"))
+        name_label.pack(fill="both", expand=True)
+        ToolTip(name_label, lambda: name_label.cget("text"))
+        tag_cell = ctk.CTkFrame(row_frame, width=1, height=44, fg_color="transparent")
+        tag_cell.grid(row=0, column=1, sticky="ew", padx=6, pady=10)
+        tag_cell.pack_propagate(False)
+        tag_entry = SoftEntry(tag_cell, width=1, height=44, corner_radius=8, fg_color=SURFACE_3, border_color=BORDER, placeholder_text="识别中…")
+        tag_entry.pack(fill="both", expand=True)
 
-        conflict_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
+        conflict_frame = ctk.CTkFrame(row_frame, width=1, height=52, fg_color="transparent")
+        conflict_frame.pack_propagate(False)
         conflict_frame.grid(row=1, column=0, columnspan=4, sticky="ew", padx=13, pady=(0, 8))
         conflict_frame.grid_remove()
         conflict_label = ctk.CTkLabel(conflict_frame, text="", text_color=DANGER, anchor="w", font=ctk.CTkFont(size=12, weight="bold"))
         conflict_label.pack(side="left", padx=(0, 8), pady=4)
-        btn_use_marker = ctk.CTkButton(conflict_frame, text="用目录", width=72, height=28, corner_radius=7, fg_color=WARNING_BG, hover_color=WARNING_HOVER, text_color=WARNING)
+        btn_use_marker = SoftButton(conflict_frame, text="用目录", width=72, height=28, corner_radius=7, fg_color=WARNING_BG, hover_color=WARNING_HOVER, text_color=WARNING)
         btn_use_marker.pack(side="left", padx=(0, 6), pady=4)
         apply_focus_style(btn_use_marker)
-        btn_use_name = ctk.CTkButton(conflict_frame, text="用名称", width=72, height=28, corner_radius=7, fg_color=WARNING_BG, hover_color=WARNING_HOVER, text_color=WARNING)
+        btn_use_name = SoftButton(conflict_frame, text="用名称", width=72, height=28, corner_radius=7, fg_color=WARNING_BG, hover_color=WARNING_HOVER, text_color=WARNING)
         btn_use_name.pack(side="left", pady=4)
         apply_focus_style(btn_use_name)
 
@@ -571,10 +587,11 @@ class PipelineApp:
         btn_use_marker.configure(command=lambda: self.resolve_tag_conflict(data, "marker"))
         btn_use_name.configure(command=lambda: self.resolve_tag_conflict(data, "name"))
         tag_entry.bind("<KeyRelease>", lambda _event, row=data: self.mark_tag_edited(row))
-        data["btn_fix"] = ctk.CTkButton(row_frame, text="检查编号", command=lambda: self.do_fix_name(data), width=118, height=40, corner_radius=8, fg_color=WARNING_BG, hover_color=WARNING_HOVER, text_color=WARNING)
+        data["btn_fix"] = SoftButton(row_frame, text="检查编号", command=lambda: self.do_fix_name(data), width=118, height=40, corner_radius=8, fg_color=WARNING_BG, hover_color=WARNING_HOVER, text_color=WARNING)
+        ToolTip(data["btn_fix"], lambda: f"目标名称：{data['expected_target_name']}" if data["expected_target_name"] else "检查文件夹编号")
         apply_focus_style(data["btn_fix"])
         data["btn_fix"].grid(row=0, column=2, padx=5, pady=10)
-        data["btn_remove"] = ctk.CTkButton(row_frame, text="×", command=lambda: self.remove_left_row(row_frame), width=44, height=44, corner_radius=9, fg_color="transparent", hover_color=DANGER_BG, text_color=MUTED, font=ctk.CTkFont(size=17))
+        data["btn_remove"] = SoftButton(row_frame, text="×", command=lambda: self.remove_left_row(row_frame), width=44, height=44, corner_radius=9, fg_color="transparent", hover_color=DANGER_BG, text_color=MUTED, font=ctk.CTkFont(size=17))
         ToolTip(data["btn_remove"], "移除")
         apply_focus_style(data["btn_remove"])
         data["btn_remove"].grid(row=0, column=3, padx=(2, 9), pady=8)
@@ -586,7 +603,8 @@ class PipelineApp:
         if not hasattr(self, "btn_enqueue"):
             return
         unresolved = any(row.get("conflict") for row in self.left_rows)
-        disabled = self.preparing_queue or bool(self.tag_scan_tokens) or unresolved
+        coordinator = getattr(self, "coordinator", None)
+        disabled = self.preparing_queue or bool(self.tag_scan_tokens) or unresolved or bool(coordinator and coordinator.owner)
         if self.tag_scan_tokens and not self.preparing_queue:
             text = "识别中…"
         elif self.preparing_queue:
@@ -707,9 +725,17 @@ class PipelineApp:
                 row["btn_fix"].configure(
                     text="✓ 编号正确" if correct else f"改为 {target}",
                     state="disabled" if correct else "normal",
-                    fg_color="#DCFCE7" if correct else "#FEF3C7",
-                    text_color=SUCCESS if correct else "#92400E",
+                    fg_color=SUCCESS_BG if correct else WARNING_BG,
+                    text_color=SUCCESS if correct else WARNING,
                 )
+        # Reserve the longest current caption for every row, including status
+        # captions, so restoring the target number cannot shift the columns.
+        buttons = [row["btn_fix"] for row in self.left_rows]
+        common_width = max(
+            [118] + [button.cget("font").measure(button.cget("text")) + 32 for button in buttons]
+        )
+        for button in buttons:
+            button.configure(width=common_width)
 
     def detect_min_number(self):
         matches = [(int(numbers[-1]), numbers[-1]) for row in self.left_rows if (numbers := re.findall(r"\d+", row["original_name"]))]
@@ -796,18 +822,16 @@ class PipelineApp:
 
 
     def enqueue_worker(self, rows, sources, targets, tags, tag_prefix, remove_marker_tags):
-        results = execute_explicit_preprocess_batch(
-            sources,
-            targets,
-            tags,
-            tag_prefix,
-            unwrap_nested=True,
-            remove_marker_tags=remove_marker_tags,
-        )
         try:
-            self.ui_events.put(("enqueue_finished", rows, results, tags), timeout=0.5)
-        except queue.Full:
-            pass
+            results = execute_explicit_preprocess_batch(
+                sources, targets, tags, tag_prefix, unwrap_nested=True,
+                remove_marker_tags=remove_marker_tags,
+            )
+        except Exception as error:
+            results = tuple(PreprocessResult(Path(source), None, FAILED, f"处理异常：{error}")
+                            for source in sources)
+        # Completion must not be dropped: the main thread releases the job lock.
+        self.ui_events.put(("enqueue_finished", rows, results, tags))
 
 
     def finish_enqueue(self, rows, results, tags):
@@ -920,6 +944,7 @@ class PipelineApp:
             except (AttributeError, OSError):
                 pass
         self.btn_pause.configure(text="继续全部" if self.is_paused else "暂停全部")
+        self.btn_pause.set_selected(self.is_paused)
         self.status_var.set("队列已暂停" if self.is_paused else "正在压缩队列")
         if self.current_row:
             self.current_row["status_label"].configure(text="已暂停" if self.is_paused else "压缩中", text_color=WARNING if self.is_paused else PRIMARY)
@@ -1080,7 +1105,8 @@ class PipelineApp:
                     self.finish_compression()
         except queue.Empty:
             pass
-        self.root.after(20 if not self.ui_events.empty() else 50, self.poll_ui_events)
+        finally:
+            self.root.after(20 if not self.ui_events.empty() else 50, self.poll_ui_events)
 
     def finish_compression(self):
         self.is_running = False
@@ -1088,6 +1114,7 @@ class PipelineApp:
         self.current_row = None
         self.btn_compress.configure(state="normal", text="开始压缩")
         self.btn_pause.configure(state="disabled", text="暂停全部")
+        self.btn_pause.set_selected(False)
         self.btn_cancel.configure(state="disabled")
         done = sum(row["status"] == "done" for row in self.right_rows)
         self.status_var.set("已取消" if self.cancel_requested else "队列已完成")

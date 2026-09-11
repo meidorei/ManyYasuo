@@ -24,6 +24,8 @@ APP_NAME = "批量解压工作台"
 CONFIG_FILE = Path(sys.executable if getattr(sys, "frozen", False) else __file__).with_name("config.json")
 
 from ui_theme import (
+    SoftCard, SoftButton, SoftEntry, SoftProgressBar, SoftScrollableFrame,
+    SCROLLBAR, SCROLLBAR_HOVER,
     APP_FONT,
     BG,
     BORDER,
@@ -78,7 +80,7 @@ class ExtractorApp:
 
     @staticmethod
     def card(parent, **kwargs):
-        return ctk.CTkFrame(
+        return SoftCard(
             parent,
             fg_color=SURFACE,
             border_color=BORDER,
@@ -185,7 +187,7 @@ class ExtractorApp:
         }
         if width is not None:
             kwargs["width"] = width
-        return ctk.CTkEntry(parent, **kwargs)
+        return SoftEntry(parent, **kwargs)
 
     def build_queue_card(self):
         card = self.card(self.root)
@@ -201,12 +203,12 @@ class ExtractorApp:
         self.secondary_button(header, "清空", self.clear_queue, 68).pack(side="right")
         self.secondary_button(header, "选择压缩文件", self.choose_archives, 120).pack(side="right", padx=(0, 8))
 
-        self.queue_frame = ctk.CTkScrollableFrame(
+        self.queue_frame = SoftScrollableFrame(
             card,
-            fg_color="#F4F7FB",
+            fg_color=SURFACE_2,
             corner_radius=10,
-            scrollbar_button_color="#CBD5E1",
-            scrollbar_button_hover_color="#94A3B8",
+            scrollbar_button_color=SCROLLBAR,
+            scrollbar_button_hover_color=SCROLLBAR_HOVER,
         )
         self.queue_frame.grid(row=1, column=0, sticky="nsew", padx=18, pady=(0, 18))
         self.empty_label = ctk.CTkLabel(
@@ -218,9 +220,8 @@ class ExtractorApp:
         self.empty_label.pack(expand=True, pady=110)
 
     def build_action_dock(self):
-        dock = ctk.CTkFrame(self.root, height=78, corner_radius=0, fg_color=SURFACE, border_width=1, border_color=BORDER)
-        dock.grid(row=2, column=0, sticky="ew")
-        dock.grid_propagate(False)
+        dock = SoftCard(self.root, fg_color=SURFACE)
+        dock.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 16))
         dock.grid_columnconfigure(0, weight=1)
 
         progress_box = ctk.CTkFrame(dock, fg_color="transparent")
@@ -233,11 +234,11 @@ class ExtractorApp:
         ctk.CTkLabel(title, textvariable=self.status_var, text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=(10, 0))
         self.total_label = ctk.CTkLabel(progress_box, text="0%", text_color=PRIMARY, font=ctk.CTkFont(size=13, weight="bold"))
         self.total_label.grid(row=0, column=1, sticky="e")
-        self.total_progress = ctk.CTkProgressBar(progress_box, height=8, corner_radius=4, fg_color=SURFACE_3, progress_color=PRIMARY)
+        self.total_progress = SoftProgressBar(progress_box, height=26, corner_radius=13, fg_color=SURFACE, progress_color=PRIMARY)
         self.total_progress.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(7, 0))
         self.total_progress.set(0)
 
-        self.btn_cancel = ctk.CTkButton(
+        self.btn_cancel = SoftButton(
             dock,
             text="取消任务",
             command=self.cancel_all,
@@ -252,16 +253,16 @@ class ExtractorApp:
         )
         apply_focus_style(self.btn_cancel)
         self.btn_cancel.grid(row=0, column=1, padx=(0, 10))
-        self.btn_start = ctk.CTkButton(
+        self.btn_start = SoftButton(
             dock,
             text="开始解压",
             command=self.start_extract,
             width=170,
             height=48,
             corner_radius=12,
-            fg_color=PRIMARY,
-            hover_color=PRIMARY_HOVER,
-            text_color="white",
+            fg_color=SURFACE,
+            hover_color=SECONDARY_HOVER,
+            text_color=PRIMARY,
             font=ctk.CTkFont(size=15, weight="bold"),
         )
         apply_focus_style(self.btn_start)
@@ -316,7 +317,7 @@ class ExtractorApp:
         ctk.CTkLabel(frame, text=os.path.dirname(path), text_color=MUTED, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).grid(row=1, column=0, sticky="ew", padx=(14, 8), pady=(0, 8))
         status = ctk.CTkLabel(frame, text="等待解压", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold"))
         status.grid(row=0, column=1, rowspan=2, padx=8)
-        remove = ctk.CTkButton(frame, text="×", width=44, height=44, corner_radius=9, fg_color="transparent", hover_color=DANGER_BG, text_color=MUTED, font=ctk.CTkFont(size=17))
+        remove = SoftButton(frame, text="×", width=44, height=44, corner_radius=9, fg_color="transparent", hover_color=DANGER_BG, text_color=MUTED, font=ctk.CTkFont(size=17))
         ToolTip(remove, "移除")
         apply_focus_style(remove)
         remove.grid(row=0, column=2, rowspan=2, padx=(2, 10))

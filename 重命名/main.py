@@ -35,6 +35,8 @@ APP_NAME = "标签提取工作台"
 CONFIG_FILE = Path(sys.executable if getattr(sys, "frozen", False) else __file__).with_name("config.json")
 
 from ui_theme import (
+    SoftCard, SoftButton, SoftEntry, SoftProgressBar, SoftScrollableFrame,
+    SCROLLBAR, SCROLLBAR_HOVER,
     APP_FONT,
     BG,
     BORDER,
@@ -102,7 +104,7 @@ class RenamerApp:
 
     @staticmethod
     def card(parent, **kwargs):
-        return ctk.CTkFrame(
+        return SoftCard(
             parent,
             fg_color=SURFACE,
             border_color=BORDER,
@@ -127,7 +129,7 @@ class RenamerApp:
         }
         if width is not None:
             kwargs["width"] = width
-        return ctk.CTkEntry(parent, **kwargs)
+        return SoftEntry(parent, **kwargs)
 
     def setup_ui(self):
         self.root.grid_columnconfigure(0, weight=1)
@@ -202,12 +204,12 @@ class RenamerApp:
         self.btn_choose = self.secondary_button(header, "选择文件夹", self.choose_folder, 108)
         self.btn_choose.pack(side="right", padx=(0, 8))
 
-        self.queue_frame = ctk.CTkScrollableFrame(
+        self.queue_frame = SoftScrollableFrame(
             card,
-            fg_color="#F4F7FB",
+            fg_color=SURFACE_2,
             corner_radius=10,
-            scrollbar_button_color="#CBD5E1",
-            scrollbar_button_hover_color="#94A3B8",
+            scrollbar_button_color=SCROLLBAR,
+            scrollbar_button_hover_color=SCROLLBAR_HOVER,
         )
         self.queue_frame.grid(row=1, column=0, sticky="nsew", padx=18, pady=(0, 18))
         self.empty_label = ctk.CTkLabel(
@@ -219,7 +221,7 @@ class RenamerApp:
         self.empty_label.pack(expand=True, pady=105)
 
     def build_action_dock(self):
-        dock = ctk.CTkFrame(
+        dock = SoftCard(
             self.root,
             height=78,
             corner_radius=0,
@@ -227,8 +229,7 @@ class RenamerApp:
             border_width=1,
             border_color=BORDER,
         )
-        dock.grid(row=2, column=0, sticky="ew")
-        dock.grid_propagate(False)
+        dock.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 16))
         dock.grid_columnconfigure(0, weight=1)
 
         progress_box = ctk.CTkFrame(dock, fg_color="transparent")
@@ -248,26 +249,26 @@ class RenamerApp:
             font=ctk.CTkFont(size=13, weight="bold"),
         )
         self.total_label.grid(row=0, column=1, sticky="e")
-        self.total_progress = ctk.CTkProgressBar(
+        self.total_progress = SoftProgressBar(
             progress_box,
-            height=8,
-            corner_radius=4,
-            fg_color=SURFACE_3,
+            height=26,
+            corner_radius=13,
+            fg_color=SURFACE,
             progress_color=PRIMARY,
         )
         self.total_progress.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(7, 0))
         self.total_progress.set(0)
 
-        self.btn_start = ctk.CTkButton(
+        self.btn_start = SoftButton(
             dock,
             text="提取标签",
             command=self.start_rename,
             width=178,
             height=48,
             corner_radius=12,
-            fg_color=PRIMARY,
-            hover_color=PRIMARY_HOVER,
-            text_color="white",
+            fg_color=SURFACE,
+            hover_color=SECONDARY_HOVER,
+            text_color=PRIMARY,
             font=ctk.CTkFont(size=15, weight="bold"),
         )
         apply_focus_style(self.btn_start)
@@ -361,7 +362,7 @@ class RenamerApp:
             font=ctk.CTkFont(size=14, weight="bold"),
         )
         target_label.grid(row=0, column=2, sticky="ew", padx=(8, 10), pady=(11, 2))
-        remove = ctk.CTkButton(
+        remove = SoftButton(
             frame,
             text="×",
             width=44,

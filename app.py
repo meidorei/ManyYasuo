@@ -7,7 +7,7 @@ import sys
 from tkinter import messagebox
 
 import customtkinter as ctk
-from tkinterdnd2 import DND_FILES
+from tkinterdnd2 import COPY, DND_FILES, REFUSE_DROP
 from tkinterdnd2.TkinterDnD import DnDWrapper, _require
 
 from config_store import ConfigStore
@@ -22,6 +22,7 @@ APP_NAME = "压缩"
 
 from ui_theme import (
     APP_FONT,
+    SoftButton, SoftCard, TEXT, SURFACE,
     ACCENT,
     NAV_ACTIVE_BG,
     NAV_ACTIVE_TEXT,
@@ -32,6 +33,7 @@ from ui_theme import (
     SUCCESS,
     WORKSPACE,
     apply_focus_style,
+    style_window_caption, MUTED,
 )
 
 
@@ -73,6 +75,37 @@ class CoordinatedCompression(PipelineApp):
 
     def load_config(self):
         return self.store.section("compression")
+
+    def do_restructure(self):
+        if not self.coordinator.try_acquire(self.owner_name):
+            messagebox.showinfo("已有任务运行", "请等待当前任务完成后再加入队列。")
+            return
+        try:
+            super().do_restructure()
+        except Exception as error:
+            self.preparing_queue = False
+            self._restore_enqueue_controls()
+            messagebox.showerror("无法加入队列", str(error))
+        finally:
+            if not self.preparing_queue:
+                self.coordinator.release(self.owner_name)
+                self.refresh_enqueue_state()
+
+    def _restore_enqueue_controls(self):
+        for row in self.left_rows:
+            for key in ("btn_fix", "btn_remove", "entry"):
+                row[key].configure(state="normal")
+
+    def finish_enqueue(self, rows, results, tags):
+        try:
+            super().finish_enqueue(rows, results, tags)
+        finally:
+            self.preparing_queue = False
+            try:
+                self._restore_enqueue_controls()
+            finally:
+                self.coordinator.release(self.owner_name)
+                self.refresh_enqueue_state()
 
     def save_config(self):
         data = {
@@ -175,11 +208,13 @@ class CoordinatedRenamer(RenamerApp):
 class WorkstationApp:
     def __init__(self, root: UnifiedWindow):
         self.root = root
+        ctk.set_appearance_mode("light")
+        ctk.ThemeManager.theme["CTkFont"]["family"] = APP_FONT
         self.root.title(APP_NAME)
         self.root.geometry("1360x820")
         self.root.minsize(1080, 680)
         self.root.configure(fg_color=WORKSPACE)
-        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
 
         self.store = ConfigStore()
@@ -189,33 +224,69 @@ class WorkstationApp:
         self.hosts: dict[str, PageHost] = {}
         self.pages = {}
 
+        self._build_header()
         self._build_navigation()
         self._build_pages()
         self.coordinator.subscribe(self._on_job_change)
         self.show_page("compression")
 
-        self.root.drop_target_register(DND_FILES)
-        self.root.dnd_bind("<<Drop>>", self.handle_drop)
+        self._register_drop_targets()
+        self.root.bind("<Map>", self._on_window_map, add="+")
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.root.after(300, lambda: style_window_caption(self.root))
+
+    def _on_window_map(self, event):
+        if event.widget is self.root:
+            self.root.after_idle(self._register_drop_targets)
+
+    def _register_drop_targets(self):
+        # CTk scroll areas have their own native frames/canvases. Register the
+        # actual content windows, including after the toplevel is remapped.
+        targets = [self.root]
+        for page in self.pages.values():
+            for attribute in ("frame_left", "frame_right", "list_frame", "queue_frame"):
+                area = getattr(page, attribute, None)
+                if area is not None:
+                    targets.extend((area._parent_frame, area._parent_canvas, area))
+        for target in targets:
+            target.drop_target_register(DND_FILES)
+            # Avoid accumulating registered Tcl callbacks on remapping.
+            if not getattr(target, "_workstation_drop_bound", False):
+                target.dnd_bind("<<DropEnter>>", lambda event: COPY)
+                target.dnd_bind("<<DropPosition>>", lambda event: COPY)
+                target.dnd_bind("<<Drop>>", self.handle_drop)
+                target._workstation_drop_bound = True
+
+    def _build_header(self):
+        header = ctk.CTkFrame(self.root, fg_color=WORKSPACE, corner_radius=0)
+        header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=24, pady=(14, 0))
+        header.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(header, text="文件工作台", text_color=TEXT,
+                     font=ctk.CTkFont(size=21, weight="bold")).grid(row=0, column=0, padx=(0, 30))
+        self.page_heading = ctk.CTkLabel(header, text="批量压缩", text_color=TEXT,
+                                        font=ctk.CTkFont(size=18, weight="bold"))
+        self.page_heading.grid(row=0, column=1, sticky="w")
+        ctk.CTkLabel(header, text="批量处理 · 本地执行", text_color=MUTED,
+                     font=ctk.CTkFont(size=13)).grid(row=0, column=2)
 
     def _build_navigation(self):
         rail = ctk.CTkFrame(
             self.root,
-            width=156,
+            width=172,
             corner_radius=0,
             fg_color=NAV_BG,
-            border_width=1,
+            border_width=0,
             border_color=NAV_BORDER,
         )
-        rail.grid(row=0, column=0, sticky="nsew")
+        rail.grid(row=1, column=0, sticky="nsew")
         rail.grid_propagate(False)
         rail.grid_rowconfigure(5, weight=1)
 
         ctk.CTkLabel(
             rail,
-            text="压缩",
-            text_color="#172033",
-            font=ctk.CTkFont(size=22, weight="bold"),
+            text="处理模块",
+            text_color=MUTED,
+            font=ctk.CTkFont(size=13),
         ).grid(row=0, column=0, sticky="w", padx=20, pady=(24, 22))
 
         items = [
@@ -225,26 +296,26 @@ class WorkstationApp:
             ("renaming", "提取标签"),
         ]
         for index, (key, title) in enumerate(items, start=1):
-            button = ctk.CTkButton(
+            button = SoftButton(
                 rail,
                 text=title,
                 command=lambda name=key: self.show_page(name),
-                height=44,
+                height=52,
                 corner_radius=9,
                 anchor="w",
-                fg_color="transparent",
+                fg_color=NAV_BG,
                 hover_color=NAV_HOVER,
                 text_color=NAV_TEXT,
                 font=ctk.CTkFont(size=14, weight="bold"),
             )
             apply_focus_style(button)
-            button.grid(row=index, column=0, sticky="ew", padx=12, pady=3)
+            button.grid(row=index, column=0, sticky="ew", padx=12, pady=6)
             self.nav_buttons[key] = button
 
-        status = ctk.CTkFrame(
+        status = SoftCard(
             rail,
-            fg_color="#FFFFFF",
-            border_width=1,
+            fg_color=SURFACE,
+            border_width=0,
             border_color=NAV_BORDER,
             corner_radius=10,
         )
@@ -268,7 +339,7 @@ class WorkstationApp:
     def _build_pages(self):
         for key in ("compression", "preprocessing", "extraction", "renaming"):
             host = PageHost(self.root, fg_color=WORKSPACE, corner_radius=0)
-            host.grid(row=0, column=1, sticky="nsew")
+            host.grid(row=1, column=1, sticky="nsew")
             self.hosts[key] = host
 
         self.pages = {
@@ -280,6 +351,10 @@ class WorkstationApp:
 
     def show_page(self, name: str):
         self.current_page = name
+        labels = {"compression": "批量压缩", "preprocessing": "加入标签",
+                  "extraction": "批量解压", "renaming": "提取标签"}
+        self.page_heading.configure(text=labels[name])
+        self.root.title(f"{labels[name]} · 文件工作台")
         for key, host in self.hosts.items():
             if key == name:
                 host.grid()
@@ -288,15 +363,18 @@ class WorkstationApp:
                 host.grid_remove()
         for key, button in self.nav_buttons.items():
             active = key == name
+            button.set_selected(active)
             button.configure(
-                fg_color=NAV_ACTIVE_BG if active else "transparent",
+                fg_color=NAV_ACTIVE_BG if active else NAV_BG,
                 text_color=NAV_ACTIVE_TEXT if active else NAV_TEXT,
             )
 
     def handle_drop(self, event):
+        if not getattr(event, "data", None):
+            return REFUSE_DROP
         page = self.pages[self.current_page]
         page.handle_drop(event)
-        return "break"
+        return COPY
 
     def _on_job_change(self, owner: str | None):
         buttons = {
@@ -307,6 +385,7 @@ class WorkstationApp:
         }
         for button in buttons.values():
             button.configure(state="disabled" if owner else "normal")
+        self.pages["compression"].refresh_enqueue_state()
         if self.pages["preprocessing"].adding_paths:
             self.pages["preprocessing"].btn_start.configure(state="disabled")
 
