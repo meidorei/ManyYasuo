@@ -1,0 +1,9 @@
+{
+  "name": "ManyYasuo",
+  "slug": "manyyasuo",
+  "identifier": "dev.manyyasuo.workbench",
+  "version": "1.0.0",
+  "main": "./cmd/manyyasuo",
+  "icon": "assets/app-icon.png",
+  "out": "dist"
+}
