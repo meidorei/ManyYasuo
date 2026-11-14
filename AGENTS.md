@@ -41,6 +41,6 @@ ManyYasuo 是 Windows 10/11 x64 批量文件工作台，包含压缩、预处理
 
 ## 迁移边界
 
-- 旧 Python 实现与 PyInstaller 配置暂留作对照，完成性能与 Windows 人工验收后再移除。不得把模拟 UI 测试等同于真实 IME、Explorer 拖放和系统 DPI 验收。
-- 旧版可复用现有 `.venv` 执行 `python -m unittest discover -s tests -v`。未经安装授权不要运行会下载依赖的 `uv sync`。
+- 按用户要求已移除旧 Python 应用、旧测试与 PyInstaller 配置，历史实现可从 Git 恢复。当前维护 Go 版本及其测试；不得把模拟 UI 测试等同于真实 IME、Explorer 拖放和系统 DPI 验收。
+- `tools/build_icon.py` 仅用于图标资源维护，不参与应用构建；需要已有 Python 与 Pillow。安装依赖前仍须明确授权。
 - 不清理已有 `.venv`、缓存、本机配置或旧 dist，不推送或发布。

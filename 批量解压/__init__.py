@@ -1,1 +1,0 @@
-"""Integrated extraction page."""

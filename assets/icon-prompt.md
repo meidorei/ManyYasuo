@@ -3,7 +3,7 @@
 使用内置 image_gen 生成，原图保存在 `app-icon.png`。
 `app-icon.ico` 从原图转换，包含 16、20、24、32、40、48、64、128、256 像素尺寸，用于窗口及 EXE。
 
-使用 `uv run python tools/build_icon.py` 重新生成图标。ICO 使用 32 位 RGBA 的 DIB 编码，避免 Tk 将 PNG 图标条目统一缩放后选中放大的小图。更换图标后使用 `uv run pyinstaller --noconfirm --clean main_fast.spec` 打包，确保 EXE 图标资源更新。
+图标维护脚本 `tools/build_icon.py` 需要已有 Python 与 Pillow，本机可使用 `.\.venv\Scripts\python.exe tools/build_icon.py` 重新生成 ICO；日常 Go 构建直接使用现有图标，不依赖 Python。ICO 保留多尺寸 32 位 RGBA DIB 编码。更换图标后使用 `./tools/build.ps1` 打包，将图标写入 Go EXE。若缺少 Python 或 Pillow，先按项目约定确认安装，不自动下载依赖。
 
 ## 生成提示词
 
